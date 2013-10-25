@@ -1,8 +1,9 @@
 require 'yaml'
 require File.expand_path('../../thrust_config', __FILE__)
+require File.expand_path('../../ipa_re_signer', __FILE__)
 require 'tempfile'
 
-@thrust = ThrustConfig.new(Dir.getwd, File.join(Dir.getwd, 'thrust.yml'))
+@thrust = ThrustConfig.make(Dir.getwd, File.join(Dir.getwd, 'thrust.yml'))
 
 desc "show the current build"
 task :current_version do
@@ -38,17 +39,17 @@ end
 namespace :testflight do
   @thrust.config['distributions'].each do |task_name, info|
     desc "Deploy build to testflight #{info['team']} team (use NOTIFY=false to prevent team notification)"
-    task task_name do
+    task task_name, :provision_search_query do
       @team_token = info['token']
       @distribution_list = info['default_list']
       @configuration = info['configuration']
       @bumps_build_number = info['increments_build_number'].nil? ? true : info['increments_build_number']
       @configured = true
-      Rake::Task["testflight:deploy"].invoke
+      Rake::Task["testflight:deploy"].invoke(provision_search_query)
     end
   end
 
-  task :deploy do
+  task :deploy, :provision_search_query do |task, args|
     raise "You need to run a distribution configuration." unless @configured
     team_token = @team_token
     distribution_list = @distribution_list
@@ -74,6 +75,10 @@ namespace :testflight do
 
     STDERR.puts "Packaging..."
     ipa_file = @thrust.xcode_package(build_configuration)
+
+    provision_search_query = args.first
+    IpaReSigner.make(ipa_file, @thrust.config['identity'], provision_search_query).call
+
     STDERR.puts "Zipping dSYM..."
     dsym_path = "#{build_dir}/#{app_name}.app.dSYM"
     zipped_dsym_path = "#{dsym_path}.zip"
