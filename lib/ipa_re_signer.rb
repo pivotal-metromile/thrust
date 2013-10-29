@@ -39,8 +39,9 @@ class IpaReSigner
   end
 
   def provision_path
-    paths = `grep -rl "#{provision_search_query}" "#{provision_search_path}"`.split("\n")
-    paths.first or raise(ProvisioningProfileNotFound)
+    command = %Q(grep -rl "#{provision_search_query}" "#{provision_search_path}")
+    paths = `#{command}`.split("\n")
+    paths.first or raise(ProvisioningProfileNotFound, "A '#{command}' didn't give us any lines")
   end
 
   def ipa_filename

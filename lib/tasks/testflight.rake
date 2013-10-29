@@ -39,13 +39,13 @@ end
 namespace :testflight do
   @thrust.config['distributions'].each do |task_name, info|
     desc "Deploy build to testflight #{info['team']} team (use NOTIFY=false to prevent team notification)"
-    task task_name, :provision_search_query do
+    task task_name, :provision_search_query do |task, args|
       @team_token = info['token']
       @distribution_list = info['default_list']
       @configuration = info['configuration']
       @bumps_build_number = info['increments_build_number'].nil? ? true : info['increments_build_number']
       @configured = true
-      Rake::Task["testflight:deploy"].invoke(provision_search_query)
+      Rake::Task["testflight:deploy"].invoke(args.first)
     end
   end
 
@@ -79,27 +79,27 @@ namespace :testflight do
     provision_search_query = args.first
     IpaReSigner.make(ipa_file, @thrust.config['identity'], provision_search_query).call
 
-    STDERR.puts "Zipping dSYM..."
-    dsym_path = "#{build_dir}/#{app_name}.app.dSYM"
-    zipped_dsym_path = "#{dsym_path}.zip"
-    @thrust.system_or_exit "zip -r -T -y '#{zipped_dsym_path}' '#{dsym_path}'"
-    STDERR.puts "Done!"
-
-    print "Deploy Notes: "
-    message = STDIN.gets
-    message += "\n" + `git log HEAD^..HEAD`
-    message_file = Tempfile.new("deploy_notes")
-    File.open(message_file, 'w') {|f| f.write(message) }
-
-    @thrust.system_or_exit [
-      "curl http://testflightapp.com/api/builds.json",
-      "-F file=@#{ipa_file}",
-      "-F dsym=@#{zipped_dsym_path}",
-      "-F api_token='#{@thrust.config['api_token']}'",
-      "-F team_token='#{team_token}'",
-      "-F notes=@#{message_file.path}",
-      "-F notify=#{(ENV['NOTIFY'] || 'true').downcase.capitalize}",
-      ("-F distribution_lists='#{distribution_list}'" if distribution_list)
-    ].compact.join(' ')
+    #STDERR.puts "Zipping dSYM..."
+    #dsym_path = "#{build_dir}/#{app_name}.app.dSYM"
+    #zipped_dsym_path = "#{dsym_path}.zip"
+    #@thrust.system_or_exit "zip -r -T -y '#{zipped_dsym_path}' '#{dsym_path}'"
+    #STDERR.puts "Done!"
+    #
+    #print "Deploy Notes: "
+    #message = STDIN.gets
+    #message += "\n" + `git log HEAD^..HEAD`
+    #message_file = Tempfile.new("deploy_notes")
+    #File.open(message_file, 'w') {|f| f.write(message) }
+    #
+    #@thrust.system_or_exit [
+    #  "curl http://testflightapp.com/api/builds.json",
+    #  "-F file=@#{ipa_file}",
+    #  "-F dsym=@#{zipped_dsym_path}",
+    #  "-F api_token='#{@thrust.config['api_token']}'",
+    #  "-F team_token='#{team_token}'",
+    #  "-F notes=@#{message_file.path}",
+    #  "-F notify=#{(ENV['NOTIFY'] || 'true').downcase.capitalize}",
+    #  ("-F distribution_lists='#{distribution_list}'" if distribution_list)
+    #].compact.join(' ')
   end
 end
